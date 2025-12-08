@@ -1,8 +1,3 @@
-#!/usr/bin/env python3
-"""
-Configuration Language Parser - Variant 16
-Парсер учебного конфигурационного языка с поддержкой констант и выражений
-"""
 
 import sys
 import json
@@ -10,7 +5,6 @@ import argparse
 from typing import Any, Dict, List
 from lark import Lark, Transformer, Token, exceptions
 
-# --- Грамматика языка с корректной поддержкой float, scinotation, и массивов ---
 GRAMMAR = r"""
     start: statement*
 
@@ -24,10 +18,8 @@ GRAMMAR = r"""
          | const_expr
          | NAME
 
-    // Числовой литерал распознаётся как NUMBER
     NUMBER: /-?(?:\d+\.\d*|\.\d+|\d+)(?:[eE][+-]?\d+)?/
 
-    // Массивы поддерживают как круглые скобки, так и запятую для разделения элементов
     array: "(" ")"
          | "(" value ("," value)* ")"
 
@@ -64,7 +56,6 @@ GRAMMAR = r"""
 
 
 class ConfigTransformer(Transformer):
-    """Трансформер для преобразования AST в структуры данных"""
 
     def __init__(self):
         super().__init__()
@@ -72,24 +63,20 @@ class ConfigTransformer(Transformer):
         self.results: List[Any] = []
 
     def start(self, items):
-        """Корневой элемент - возвращает все результаты"""
         return self.results if self.results else None
 
     def statement(self, items):
-        """Обработка statement - добавляем в results только здесь"""
         if items and items[0] is not None:
             self.results.append(items[0])
         return items[0] if items else None
 
     def constant_def(self, items):
-        """Определение константы: def имя = значение"""
         name = str(items[0])
         value = items[1]
         self.constants[name] = value
         return None
 
     def value(self, items):
-        """Значение (число, массив, выражение, имя)"""
         item = items[0]
         if isinstance(item, Token) and item.type == "NAME":
             name = str(item)
@@ -101,7 +88,6 @@ class ConfigTransformer(Transformer):
     def NUMBER(self, token):
         num_str = str(token)
         try:
-            # float('1e2') and float('1.05e-6') supported
             if '.' in num_str or 'e' in num_str or 'E' in num_str:
                 return float(num_str)
             else:
@@ -110,11 +96,9 @@ class ConfigTransformer(Transformer):
             raise ValueError(f"Invalid number format: {num_str}")
 
     def array(self, items):
-        """Обработка массива"""
         return list(items)
 
     def const_expr(self, items):
-        """Вычисление константного выражения"""
         return items[0]
 
     def add(self, items):
@@ -146,7 +130,6 @@ class ConfigTransformer(Transformer):
             raise ValueError(f"len() cannot be applied to {type(val)}")
 
     def _eval_value(self, value):
-        """Вычисление значения (подстановка констант)"""
         if isinstance(value, Token):
             if value.type == "NAME":
                 name = str(value)
@@ -162,21 +145,7 @@ class ConfigTransformer(Transformer):
 
 
 def parse_config(input_text: str) -> Any:
-    """
-    Парсинг конфигурационного файла
-
-    Args:
-        input_text: Текст конфигурации
-
-    Returns:
-        Распарсенная структура данных
-
-    Raises:
-        ValueError: При ошибках парсинга
-    """
     try:
-        # Для Earley-недопустим встроенный трансформер, поэтому парсим дерево,
-        # а затем отдельно прогоняем через ConfigTransformer
         parser = Lark(GRAMMAR, parser='earley')
         tree = parser.parse(input_text)
         transformer = ConfigTransformer()
@@ -189,7 +158,6 @@ def parse_config(input_text: str) -> Any:
 
 
 def main():
-    """Главная функция"""
     arg_parser = argparse.ArgumentParser(
         description="Configuration Language Parser (Variant 16)"
     )
@@ -202,13 +170,10 @@ def main():
     args = arg_parser.parse_args()
 
     try:
-        # Читаем из стандартного ввода
         input_text = sys.stdin.read()
 
-        # Парсим
         result = parse_config(input_text)
 
-        # Записываем в JSON файл
         with open(args.output, 'w', encoding='utf-8') as f:
             json.dump(result, f, indent=2, ensure_ascii=False)
 
